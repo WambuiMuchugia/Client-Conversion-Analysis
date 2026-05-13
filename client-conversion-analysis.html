@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client Conversion Analysis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a18; min-height: 100vh; }
+  .header { background: #fff; border-bottom: 0.5px solid #e0dfd7; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 18px; font-weight: 500; }
+  .header p { font-size: 13px; color: #73726c; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem 2rem; }
+  .filter-row { display: flex; gap: 6px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .fbtn { font-size: 12px; padding: 5px 14px; border-radius: 8px; border: 0.5px solid #c0bfb8; background: transparent; color: #73726c; cursor: pointer; transition: all 0.15s; }
+  .fbtn:hover { background: #f0efe8; }
+  .fbtn.active { background: #e6f1fb; color: #0c447c; border-color: transparent; font-weight: 500; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .kpi { background: #f0efe8; border-radius: 8px; padding: 1rem; }
+  .kpi-label { font-size: 12px; color: #73726c; margin-bottom: 5px; }
+  .kpi-val { font-size: 22px; font-weight: 500; color: #1a1a18; }
+  .kpi-sub { font-size: 12px; margin-top: 3px; color: #73726c; }
+  .card { background: #fff; border: 0.5px solid #e0dfd7; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+  .card-title { font-size: 14px; font-weight: 500; color: #1a1a18; margin: 0 0 14px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+  .funnel-stage { margin-bottom: 12px; }
+  .funnel-labels { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; flex-wrap: wrap; gap: 4px; }
+  .funnel-name { font-weight: 500; color: #1a1a18; }
+  .funnel-track { background: #f0efe8; border-radius: 4px; height: 30px; width: 100%; overflow: hidden; }
+  .funnel-fill { height: 30px; border-radius: 4px; display: flex; align-items: center; padding-left: 10px; font-size: 12px; font-weight: 500; color: #fff; transition: width 0.5s; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 8px; font-weight: 500; }
+  .badge-high { background: #fcebeb; color: #a32d2d; }
+  .badge-mid { background: #faeeda; color: #854f0b; }
+  .badge-low { background: #eaf3de; color: #3b6d11; }
+  .src-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 13px; }
+  .src-name { width: 110px; color: #1a1a18; flex-shrink: 0; font-size: 13px; }
+  .src-bar-track { flex: 1; background: #f0efe8; border-radius: 4px; height: 8px; }
+  .src-bar { height: 8px; border-radius: 4px; }
+  .src-val { width: 36px; text-align: right; color: #73726c; font-size: 12px; flex-shrink: 0; }
+  .src-rate { width: 44px; text-align: right; font-size: 12px; flex-shrink: 0; font-weight: 500; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; font-size: 12px; color: #73726c; }
+  .leg { display: flex; align-items: center; gap: 4px; }
+  .leg-sq { width: 10px; height: 10px; border-radius: 2px; }
+  .chart-wrap { position: relative; width: 100%; height: 200px; }
+  .insight-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+  .insight { background: #f0efe8; border-radius: 8px; padding: 10px 14px; }
+  .insight-label { font-size: 11px; color: #73726c; margin-bottom: 3px; }
+  .insight-val { font-size: 14px; font-weight: 500; color: #1a1a18; }
+  @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } .container { padding: 1rem; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Client Conversion Analysis</h1>
+    <p>Inquiries → Booked clients · Funnel drop-off · Source performance</p>
+  </div>
+  <p style="font-size:12px;color:#73726c">Portfolio Project 3</p>
+</div>
+
+<div class="container">
+
+  <div class="filter-row" id="filterRow"></div>
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <div class="card">
+    <p class="card-title">Conversion funnel</p>
+    <div id="funnelBars"></div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <p class="card-title">Inquiries by source</p>
+      <div id="srcBars"></div>
+    </div>
+    <div class="card">
+      <p class="card-title">Conversion rate by source</p>
+      <div style="position:relative;height:200px"><canvas id="srcChart" role="img" aria-label="Conversion rate by source">Conversion rates per source.</canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="card-title">Monthly inquiries vs bookings</p>
+    <div class="legend">
+      <span class="leg"><span class="leg-sq" style="background:#B5D4F4"></span>Inquiries</span>
+      <span class="leg"><span class="leg-sq" style="background:#1D9E75"></span>Booked</span>
+      <span class="leg"><span class="leg-sq" style="background:#534AB7;border-radius:50%"></span>Conversion rate %</span>
+    </div>
+    <div class="chart-wrap"><canvas id="trendChart" role="img" aria-label="Monthly conversion trend">Monthly inquiries vs bookings trend.</canvas></div>
+  </div>
+
+  <div class="insight-row" id="insights"></div>
+
+</div>
+
+<script>
+const DATA = {
+  all: {
+    funnel:[
+      {stage:'Inquiry received',count:320,pct:100,dropPct:null,dropCls:'badge-low'},
+      {stage:'Initial response sent',count:288,pct:90,dropPct:10,dropCls:'badge-low'},
+      {stage:'Consultation booked',count:198,pct:62,dropPct:31,dropCls:'badge-mid'},
+      {stage:'Proposal sent',count:142,pct:44,dropPct:28,dropCls:'badge-mid'},
+      {stage:'Follow-up done',count:104,pct:33,dropPct:27,dropCls:'badge-mid'},
+      {stage:'Client booked',count:74,pct:23,dropPct:29,dropCls:'badge-mid'},
+    ],
+    sources:[
+      {name:'Instagram',inquiries:98,booked:28,color:'#534AB7'},
+      {name:'Referrals',inquiries:82,booked:31,color:'#1D9E75'},
+      {name:'WhatsApp',inquiries:64,booked:8,color:'#BA7517'},
+      {name:'Website',inquiries:46,booked:5,color:'#185FA5'},
+      {name:'Walk-in',inquiries:30,booked:2,color:'#888780'},
+    ],
+    trend:{
+      labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      inquiries:[18,22,26,30,28,34,32,36,28,30,22,14],
+      booked:[3,5,6,7,6,9,7,10,6,7,4,4]
+    },
+    kpi:{total:320,booked:74,rate:'23.1',avgDays:'8',lost:246}
+  },
+  q1: {
+    funnel:[
+      {stage:'Inquiry received',count:66,pct:100,dropPct:null,dropCls:'badge-low'},
+      {stage:'Initial response sent',count:60,pct:91,dropPct:9,dropCls:'badge-low'},
+      {stage:'Consultation booked',count:40,pct:61,dropPct:33,dropCls:'badge-mid'},
+      {stage:'Proposal sent',count:28,pct:42,dropPct:30,dropCls:'badge-mid'},
+      {stage:'Follow-up done',count:20,pct:30,dropPct:29,dropCls:'badge-mid'},
+      {stage:'Client booked',count:14,pct:21,dropPct:30,dropCls:'badge-mid'},
+    ],
+    sources:[
+      {name:'Instagram',inquiries:20,booked:5,color:'#534AB7'},
+      {name:'Referrals',inquiries:18,booked:6,color:'#1D9E75'},
+      {name:'WhatsApp',inquiries:14,booked:2,color:'#BA7517'},
+      {name:'Website',inquiries:9,booked:1,color:'#185FA5'},
+      {name:'Walk-in',inquiries:5,booked:0,color:'#888780'},
+    ],
+    trend:{labels:['Jan','Feb','Mar'],inquiries:[18,22,26],booked:[3,5,6]},
+    kpi:{total:66,booked:14,rate:'21.2',avgDays:'9',lost:52}
+  },
+  q2: {
+    funnel:[
+      {stage:'Inquiry received',count:92,pct:100,dropPct:null,dropCls:'badge-low'},
+      {stage:'Initial response sent',count:84,pct:91,dropPct:9,dropCls:'badge-low'},
+      {stage:'Consultation booked',count:58,pct:63,dropPct:31,dropCls:'badge-mid'},
+      {stage:'Proposal sent',count:42,pct:46,dropPct:28,dropCls:'badge-mid'},
+      {stage:'Follow-up done',count:30,pct:33,dropPct:29,dropCls:'badge-mid'},
+      {stage:'Client booked',count:22,pct:24,dropPct:27,dropCls:'badge-mid'},
+    ],
+    sources:[
+      {name:'Instagram',inquiries:28,booked:8,color:'#534AB7'},
+      {name:'Referrals',inquiries:24,booked:9,color:'#1D9E75'},
+      {name:'WhatsApp',inquiries:20,booked:3,color:'#BA7517'},
+      {name:'Website',inquiries:12,booked:2,color:'#185FA5'},
+      {name:'Walk-in',inquiries:8,booked:0,color:'#888780'},
+    ],
+    trend:{labels:['Apr','May','Jun'],inquiries:[30,28,34],booked:[7,6,9]},
+    kpi:{total:92,booked:22,rate:'23.9',avgDays:'7',lost:70}
+  },
+  q3: {
+    funnel:[
+      {stage:'Inquiry received',count:96,pct:100,dropPct:null,dropCls:'badge-low'},
+      {stage:'Initial response sent',count:86,pct:90,dropPct:10,dropCls:'badge-low'},
+      {stage:'Consultation booked',count:60,pct:63,dropPct:30,dropCls:'badge-mid'},
+      {stage:'Proposal sent',count:44,pct:46,dropPct:27,dropCls:'badge-mid'},
+      {stage:'Follow-up done',count:32,pct:33,dropPct:27,dropCls:'badge-mid'},
+      {stage:'Client booked',count:23,pct:24,dropPct:28,dropCls:'badge-mid'},
+    ],
+    sources:[
+      {name:'Instagram',inquiries:30,booked:9,color:'#534AB7'},
+      {name:'Referrals',inquiries:26,booked:10,color:'#1D9E75'},
+      {name:'WhatsApp',inquiries:18,booked:2,color:'#BA7517'},
+      {name:'Website',inquiries:14,booked:1,color:'#185FA5'},
+      {name:'Walk-in',inquiries:8,booked:1,color:'#888780'},
+    ],
+    trend:{labels:['Jul','Aug','Sep'],inquiries:[32,36,28],booked:[7,10,6]},
+    kpi:{total:96,booked:23,rate:'24.0',avgDays:'8',lost:73}
+  }
+};
+
+let activeKey='all', srcChart, trendChart;
+
+function buildFilters() {
+  document.getElementById('filterRow').innerHTML =
+    [['all','Full Year'],['q1','Q1'],['q2','Q2'],['q3','Q3']].map(([k,l])=>
+      `<button class="fbtn${k===activeKey?' active':''}" onclick="switchData('${k}')">${l}</button>`
+    ).join('');
+}
+
+function buildKPI(d) {
+  document.getElementById('kpiGrid').innerHTML = [
+    {label:'Total inquiries', val:d.kpi.total, sub:'all channels'},
+    {label:'Clients booked', val:d.kpi.booked, sub:'converted'},
+    {label:'Conversion rate', val:d.kpi.rate+'%', sub:'inquiry → booked'},
+    {label:'Avg days to close', val:d.kpi.avgDays+' days', sub:'inquiry → signed'},
+    {label:'Lost leads', val:d.kpi.lost, sub:'did not convert'},
+  ].map(k=>`<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+}
+
+function buildFunnel(d) {
+  const max = d.funnel[0].count;
+  const colors = ['#185FA5','#378ADD','#534AB7','#7F77DD','#1D9E75','#5DCAA5'];
+  document.getElementById('funnelBars').innerHTML = d.funnel.map((s,i)=>{
+    const w = Math.round((s.count/max)*100);
+    const drop = s.dropPct
+      ? `<span class="badge ${s.dropCls}">-${s.dropPct}% drop</span>`
+      : `<span class="badge badge-low">Start</span>`;
+    return `<div class="funnel-stage">
+      <div class="funnel-labels">
+        <span class="funnel-name">${s.stage}</span>
+        <span style="color:#73726c">${s.count} &nbsp;(${s.pct}%) &nbsp;${drop}</span>
+      </div>
+      <div class="funnel-track">
+        <div class="funnel-fill" style="width:${w}%;background:${colors[i]}">${s.count}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function buildSources(d) {
+  const maxInq = Math.max(...d.sources.map(s=>s.inquiries));
+  document.getElementById('srcBars').innerHTML = d.sources.map(s=>{
+    const w = Math.round((s.inquiries/maxInq)*100);
+    const rate = ((s.booked/s.inquiries)*100).toFixed(0)+'%';
+    const rateColor = s.booked/s.inquiries > 0.3 ? '#3b6d11' : '#854f0b';
+    return `<div class="src-row">
+      <span class="src-name">${s.name}</span>
+      <div class="src-bar-track"><div class="src-bar" style="width:${w}%;background:${s.color}"></div></div>
+      <span class="src-val">${s.inquiries}</span>
+      <span class="src-rate" style="color:${rateColor}">${rate}</span>
+    </div>`;
+  }).join('');
+}
+
+function buildInsights(d) {
+  const best = d.sources.reduce((a,b)=>(b.booked/b.inquiries > a.booked/a.inquiries)?b:a);
+  const bigDrop = d.funnel.slice(1).reduce((a,b)=>((b.dropPct||0)>(a.dropPct||0))?b:a);
+  document.getElementById('insights').innerHTML = [
+    {label:'Best converting source', val:`${best.name} (${((best.booked/best.inquiries)*100).toFixed(0)}%)`},
+    {label:'Biggest funnel drop', val:`${bigDrop.stage} (-${bigDrop.dropPct}%)`},
+    {label:'Unconverted potential', val:`${d.kpi.lost} leads not booked`},
+    {label:'Top volume source', val:`${d.sources[0].name} (${d.sources[0].inquiries} inquiries)`},
+  ].map(i=>`<div class="insight"><div class="insight-label">${i.label}</div><div class="insight-val">${i.val}</div></div>`).join('');
+}
+
+function buildCharts(d) {
+  if (srcChart) srcChart.destroy();
+  if (trendChart) trendChart.destroy();
+
+  srcChart = new Chart(document.getElementById('srcChart'), {
+    type:'bar',
+    data:{
+      labels:d.sources.map(s=>s.name),
+      datasets:[{data:d.sources.map(s=>parseFloat(((s.booked/s.inquiries)*100).toFixed(1))),backgroundColor:d.sources.map(s=>s.color),borderRadius:4}]
+    },
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{min:0,max:60,ticks:{font:{size:11},callback:v=>v+'%'},grid:{color:'rgba(128,128,128,0.1)'}},
+        y:{ticks:{font:{size:11}},grid:{display:false}}
+      }
+    }
+  });
+
+  trendChart = new Chart(document.getElementById('trendChart'), {
+    data:{
+      labels:d.trend.labels,
+      datasets:[
+        {type:'bar',label:'Inquiries',data:d.trend.inquiries,backgroundColor:'#B5D4F4',borderRadius:3,yAxisID:'y'},
+        {type:'bar',label:'Booked',data:d.trend.booked,backgroundColor:'#1D9E75',borderRadius:3,yAxisID:'y'},
+        {type:'line',label:'Rate %',data:d.trend.inquiries.map((v,i)=>parseFloat(((d.trend.booked[i]/v)*100).toFixed(1))),
+          borderColor:'#534AB7',borderDash:[5,3],tension:0.4,pointRadius:4,yAxisID:'y2',fill:false}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{ticks:{font:{size:11}},grid:{color:'rgba(128,128,128,0.1)'}},
+        y2:{position:'right',ticks:{font:{size:11},callback:v=>v+'%'},grid:{drawOnChartArea:false}},
+        x:{ticks:{font:{size:11},autoSkip:false},grid:{display:false}}
+      }
+    }
+  });
+}
+
+function switchData(key) {
+  activeKey = key;
+  const d = DATA[key];
+  buildFilters();
+  buildKPI(d);
+  buildFunnel(d);
+  buildSources(d);
+  buildInsights(d);
+  buildCharts(d);
+}
+
+switchData('all');
+</script>
+</body>
+</html>
